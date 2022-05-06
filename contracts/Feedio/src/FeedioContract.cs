@@ -57,6 +57,8 @@ namespace Feedio
         }
         public static void UpdateTokenPrice(List<ByteString> tokens, List<BigInteger> prices) {
 
+            if (!VerifyOwner() || !VerifyUpdater()) { throw new Exception("Not authorized for executing this method");}
+
             int i = 0;
             foreach (var token in tokens)
             {
@@ -105,16 +107,6 @@ namespace Feedio
             return null;
         }
 
-    }
-
-    public class TokenPricePair {
-        public string name; //Token Name
-        public BigInteger value; //Value of the token
-
-        public TokenPricePair(string tokenName, BigInteger tokenValue) {
-            name = tokenName;
-            value = tokenValue;
-        }
     }
 
     public class TokenPriceResponse {
