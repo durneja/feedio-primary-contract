@@ -23,10 +23,10 @@ namespace Feedio
         protected const byte Prefix_Config = 0x01;
         protected const string Prefix_Config_Owner = "o";
         protected const string Prefix_Config_Updater = "u";
-        private static StorageMap configData;
 
         private static Boolean VerifyOwner()
         {
+            StorageMap configData = new StorageMap(Storage.CurrentContext, Prefix_Config);
             UInt160 owner = (UInt160) configData.Get(Prefix_Config_Owner);
             if (Runtime.CheckWitness(owner)) {return true;}
             return false;
@@ -34,6 +34,7 @@ namespace Feedio
 
         private static Boolean VerifyUpdater()
         {
+            StorageMap configData = new StorageMap(Storage.CurrentContext, Prefix_Config);
             UInt160 updater = (UInt160) configData.Get(Prefix_Config_Updater);
             if (Runtime.CheckWitness(updater)) {return true;}
             return false;
@@ -50,14 +51,14 @@ namespace Feedio
 
         private static void initialize() 
         {
-            configData = new StorageMap(Storage.CurrentContext, Prefix_Config);
+            StorageMap configData = new StorageMap(Storage.CurrentContext, Prefix_Config);
 
             configData.Put(Prefix_Config_Owner, (UInt160) ToScripthash("Nc2JPKy62qCWWWSB6Ud6KL275u8yhWGTj5"));
             configData.Put(Prefix_Config_Updater, (UInt160) ToScripthash("NRurDcircwHDFb2aBuiP2QNPHUqa8evAja"));
         }
         public static void UpdateTokenPrice(List<ByteString> tokens, List<BigInteger> prices) {
 
-            if (!VerifyOwner() || !VerifyUpdater()) { throw new Exception("Not authorized for executing this method");}
+            if (!VerifyOwner() && !VerifyUpdater()) { throw new Exception("Not authorized for executing this method");}
 
             int i = 0;
             foreach (var token in tokens)
