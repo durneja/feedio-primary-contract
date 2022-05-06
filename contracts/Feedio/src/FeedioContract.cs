@@ -22,15 +22,20 @@ namespace Feedio
 
         protected const byte Prefix_Config = 0x01;
         protected const string Prefix_Config_Owner = "o";
+        protected const string Prefix_Config_Updater = "u";
+        private static StorageMap configData;
 
         private static Boolean VerifyOwner()
         {
-            StorageMap configMap = new(Storage.CurrentContext, Prefix_Config);
-            UInt160 owner = (UInt160) configMap.Get(Prefix_Config_Owner);
-            if (Runtime.CheckWitness(owner))
-            {
-                return true;
-            }
+            UInt160 owner = (UInt160) configData.Get(Prefix_Config_Owner);
+            if (Runtime.CheckWitness(owner)) {return true;}
+            return false;
+        }
+
+        private static Boolean VerifyUpdater()
+        {
+            UInt160 updater = (UInt160) configData.Get(Prefix_Config_Updater);
+            if (Runtime.CheckWitness(updater)) {return true;}
             return false;
         }
 
@@ -45,8 +50,37 @@ namespace Feedio
 
         private static void initialize() 
         {
-            StorageMap configMap = new(Storage.CurrentContext, Prefix_Config);
-            configMap.Put(Prefix_Config_Owner, (UInt160) Tx.Sender);
+            configData = new StorageMap(Storage.CurrentContext, Prefix_Config);
+
+            configData.Put(Prefix_Config_Owner, (UInt160) ToScripthash("Nc2JPKy62qCWWWSB6Ud6KL275u8yhWGTj5"));
+            configData.Put(Prefix_Config_Updater, (UInt160) ToScripthash("NRurDcircwHDFb2aBuiP2QNPHUqa8evAja"));
+        }
+        public static void UpdateTokenPrice(List<ByteString> tokens, List<BigInteger> prices) {
+
+            int i = 0;
+            foreach (var token in tokens)
+            {
+                int j = 0;
+                foreach (var price in prices)
+                {
+                    if (i == j) {
+                        Storage.Put(Storage.CurrentContext, (ByteString)"V1" + (ByteString)token, (BigInteger) price);
+                        break;
+                    }
+                    j = j + 1;
+                }
+                i = i + 1;
+            }
+
+            return;
+        }
+
+        public static ByteString GetLatestTokenPrice(ByteString asset) {
+
+            BigInteger assetPrice = (BigInteger) Storage.Get(Storage.CurrentContext, (ByteString)"V1" + asset);
+
+            TokenPriceResponse response = new TokenPriceResponse(asset,assetPrice);
+            return StdLib.JsonSerialize(response);
         }
 
         public static void UpdateContract(ByteString nefFile, string manifest)
@@ -60,5 +94,39 @@ namespace Feedio
             if (!VerifyOwner()) { throw new Exception("Not authorized for executing this method");}
             ContractManagement.Destroy();
         }
+
+        private static UInt160 ToScripthash(String address) {
+            if ((address.ToByteArray())[0] == 0x4e)
+            {
+                var decoded = (byte[]) StdLib.Base58CheckDecode(address);
+                var Scripthash = (UInt160)decoded.Last(20);
+                return (Scripthash);
+            }
+            return null;
+        }
+
     }
+
+    public class TokenPricePair {
+        public string name; //Token Name
+        public BigInteger value; //Value of the token
+
+        public TokenPricePair(string tokenName, BigInteger tokenValue) {
+            name = tokenName;
+            value = tokenValue;
+        }
+    }
+
+    public class TokenPriceResponse {
+        public string name; //Token Name
+        public BigInteger value; //Value of the token
+        public BigInteger decimals; //Decimals
+
+        public TokenPriceResponse(string tokenName, BigInteger tokenValue) {
+            this.name = tokenName;
+            this.value = tokenValue;
+            this.decimals = 4;
+        }
+    }
+
 }
