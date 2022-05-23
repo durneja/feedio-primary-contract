@@ -31,7 +31,6 @@ namespace Feedio
         [DisplayName("PricesSubscribed")]
         public static event OnPriceUpdatedDelegate OnPriceUpdated;
 
-
         private static Boolean VerifyOwner()
         {
             StorageMap configData = new StorageMap(Storage.CurrentContext, Prefix_Config);
@@ -63,14 +62,8 @@ namespace Feedio
 
             configData.Put(Prefix_Config_Owner, (UInt160) ToScripthash("Nc2JPKy62qCWWWSB6Ud6KL275u8yhWGTj5"));
             configData.Put(Prefix_Config_Updater, (UInt160) ToScripthash("NRurDcircwHDFb2aBuiP2QNPHUqa8evAja"));
-            configData.Put((ByteString)"D*" + (ByteString)"BTC", (BigInteger) 4); //9
-            configData.Put((ByteString)"D*" + (ByteString)"ETH", (BigInteger) 4); //8
-            configData.Put((ByteString)"D*" + (ByteString)"NEO", (BigInteger) 6); //8
-            configData.Put((ByteString)"D*" + (ByteString)"GAS", (BigInteger) 6); //9
-            configData.Put((ByteString)"D*" + (ByteString)"BNB", (BigInteger) 6); //9
-            configData.Put((ByteString)"D*" + (ByteString)"MATIC", (BigInteger) 6); //9
-
         }
+
         public static void UpdateTokenPrice(List<ByteString> tokens, List<BigInteger> prices) {
 
             if (!VerifyOwner() && !VerifyUpdater()) { throw new Exception("Not authorized for executing this method");}
@@ -106,10 +99,19 @@ namespace Feedio
 
         public static ByteString GetLatestTokenPrices() {
 
-            bool hasValidAccessSender = (bool)Contract.Call(ToScripthash("NdFybtEngSHyfRbUCw1vCe9HZbBtpaX741"), "accessPresentAndValid", CallFlags.ReadOnly, Runtime.CallingScriptHash);
-            bool hasValidAccessCaller = (bool)Contract.Call(ToScripthash("NdFybtEngSHyfRbUCw1vCe9HZbBtpaX741"), "accessPresentAndValid", CallFlags.ReadOnly, Tx.Sender);
-
-            if (!hasValidAccessSender && !hasValidAccessCaller) throw new Exception("Account does not have required access to retrieve prices");
+            bool hasValidAccessCaller = (bool)Contract.Call(ToScripthash("NdFybtEngSHyfRbUCw1vCe9HZbBtpaX741"), "accessPresentAndValid", CallFlags.ReadOnly, Runtime.CallingScriptHash);
+            if (!hasValidAccessCaller) {
+                //Not called from contract or contract actually does not have access
+                try
+                {
+                    bool hasValidAccessTxSender = (bool)Contract.Call(ToScripthash("NdFybtEngSHyfRbUCw1vCe9HZbBtpaX741"), "accessPresentAndValid", CallFlags.ReadOnly, Tx.Sender);                
+                    if (!hasValidAccessTxSender) { throw new Exception("Account does not have required access to retrieve prices");}
+                }
+                catch (System.Exception)
+                {                    
+                    throw new Exception("Account does not have required access to retrieve prices");
+                }
+            } 
 
             var iterator = Storage.Find(Storage.CurrentContext, (ByteString) "V1", FindOptions.KeysOnly | FindOptions.RemovePrefix);
             List<TokenPriceResponse> prices = new List<TokenPriceResponse>();
@@ -128,10 +130,19 @@ namespace Feedio
 
         public static ByteString GetLatestTokenPrice(ByteString asset) {
 
-            bool hasValidAccessSender = (bool)Contract.Call(ToScripthash("NdFybtEngSHyfRbUCw1vCe9HZbBtpaX741"), "accessPresentAndValid", CallFlags.ReadOnly, Runtime.CallingScriptHash);
-            bool hasValidAccessCaller = (bool)Contract.Call(ToScripthash("NdFybtEngSHyfRbUCw1vCe9HZbBtpaX741"), "accessPresentAndValid", CallFlags.ReadOnly, Tx.Sender);
-
-            if (!hasValidAccessSender && !hasValidAccessCaller) throw new Exception("Account does not have required access to retrieve prices");
+            bool hasValidAccessCaller = (bool)Contract.Call(ToScripthash("NdFybtEngSHyfRbUCw1vCe9HZbBtpaX741"), "accessPresentAndValid", CallFlags.ReadOnly, Runtime.CallingScriptHash);
+            if (!hasValidAccessCaller) {
+                //Not called from contract or contract actually does not have access
+                try
+                {
+                    bool hasValidAccessTxSender = (bool)Contract.Call(ToScripthash("NdFybtEngSHyfRbUCw1vCe9HZbBtpaX741"), "accessPresentAndValid", CallFlags.ReadOnly, Tx.Sender);                
+                    if (!hasValidAccessTxSender) { throw new Exception("Account does not have required access to retrieve prices");}
+                }
+                catch (System.Exception)
+                {                    
+                    throw new Exception("Account does not have required access to retrieve prices");
+                }
+            } 
 
             BigInteger assetPrice = (BigInteger) Storage.Get(Storage.CurrentContext, (ByteString)"V1" + asset);
             StorageMap configData = new StorageMap(Storage.CurrentContext, Prefix_Config);
@@ -161,7 +172,6 @@ namespace Feedio
             }
             return null;
         }
-
     }
 
     public class TokenPriceResponse {
